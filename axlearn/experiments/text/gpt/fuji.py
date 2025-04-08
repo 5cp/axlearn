@@ -338,8 +338,9 @@ def get_trainer_kwargs(
             ),
             learner_kwargs=dict(peak_lr=3e-4, weight_decay=0.1),
             max_sequence_length=max_sequence_length,
-            train_batch_size=train_batch_size,
+            train_batch_size=16,
             max_step=max_step,
+            save_every_n_steps=300,
             mesh_shape=mesh_shape_from_axes(data=-1, fsdp=8),
             mesh_rules=(
                 (
@@ -349,12 +350,13 @@ def get_trainer_kwargs(
                             MeshShapeModifier.default_config().set(
                                 # TP within the chip, FSDP across chips.
                                 # Each TRN2 chip has 4 XLA cores.
-                                mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
+                                # mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
+                                mesh_shape=mesh_shape_from_axes(fsdp=1, model=4, data=1)
                             ),
                             *trn2_config.module_modifications,
                             *trn2_config.partition_spec_modifications,
                             GradientAccumulationModifier.default_config().set(
-                                grad_acc_steps=4,
+                                grad_acc_steps=1,
                             ),
                         ],
                     ),

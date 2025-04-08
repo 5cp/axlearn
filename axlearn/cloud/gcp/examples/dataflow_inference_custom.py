@@ -88,6 +88,10 @@ class CustomModelHandler(ModelHandler[dict, PredictionResult, Any]):
     def __init__(self, flag_dict: dict):
         # Store absl FLAGS in a flag dictionary to avoid pickling issues
         self._flag_dict = flag_dict
+        self._batch_elements_kwargs = { "min_batch_size": 1, "max_batch_size": 1 }
+
+    def batch_elements_kwargs(self):
+        return self._batch_elements_kwargs
 
     def _flag_values_from_dict(self, flag_values: dict) -> flags.FlagValues:
         # Avoid mutating global FLAGS.
@@ -117,12 +121,19 @@ class CustomModelHandler(ModelHandler[dict, PredictionResult, Any]):
         inference_runner_cfg.init_state_builder.set(dir=flag_values.trainer_dir)
         inference_runner = inference_runner_cfg.instantiate(parent=None)
 
-        return inference_runner.create_method_runner(
+        runner = inference_runner.create_method_runner(
             method="predict", prng_key=jax.random.PRNGKey(1)
         )
 
+        # Run a warm-up inference to trigger compilation (and avoid compilation time being included in metrics)
+        logging.info("Initiating warm-up Inference to trigger Neuron compilation")
+        print(f"DEBUG: observed batchsize: {len(get_examples()[0]['input_ids'])}")
+        self.run_inference(batch=get_examples()[:1], model=runner, inf_args=None)
+
+        return runner
+
     def run_inference(
-        self, batch: Sequence[NestedTensor], model: MethodRunner
+        self, batch: Sequence[NestedTensor], model: MethodRunner, inf_args
     ) -> Sequence[MethodRunner.Output]:
         """Runs inferences on a batch of NestedTensors.
         NestedTensor: https://github.com/apple/axlearn/blob/main/axlearn/common/utils.py#L56
@@ -164,13 +175,14 @@ def get_examples() -> Sequence[NestedTensor]:
     """
     cfg = input_fake.FakeLmInput.default_config()
     cfg.is_training = False
-    cfg.global_batch_size = 1
-    cfg.total_num_batches = 3
+    cfg.global_batch_size = 4
+    cfg.total_num_batches = 128
+    cfg.source_length = 2048
 
     fake_input = input_fake.FakeLmInput(cfg)
     example_list = []
     for _ in range(cfg.total_num_batches):
-        example_list.append(fake_input.next())
+        example_list.append(fake_input.__next__())
 
     return example_list
 
@@ -215,6 +227,9 @@ def main(args):
             | "RunInference" >> RunInference(CustomModelHandler(absl_flags.flag_values_dict()))
             | "PrintOutput" >> beam.ParDo(PostProcessFn())
         )
+
+    metrics = pipeline.result.metrics().query(beam.metrics.MetricsFilter())
+    print(f"DEBUG: metrics: {metrics}")
 
 
 if __name__ == "__main__":
