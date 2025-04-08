@@ -53,4 +53,4 @@ python3 -m axlearn.cloud.gcp.examples.dataflow_inference_custom \
         --module=text.gpt.c4_trainer \
         --config=fuji-3B-v3-flash \
         --trainer_dir="/shared/axlearn_artifacts/SuMAHGmvpNkHffDDanUtHBOve/axlearn_out/checkpoints/step_00000300" \
-        --mesh_selector="neuron-trn2.48xlarge-64"
+        --mesh_selector="neuron-trn2.48xlarge-64" 2>&1 | tee ${OUTPUT_DIR}/${PMIX_HOSTNAME}.log
