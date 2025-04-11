@@ -107,6 +107,7 @@ TOTAL_TOKENS = {
     },
     Version.V2: {
         "test": 2 * (1024**4),  # 2T tokens
+        "3B": 2 * (1024**4),  # 2T tokens
         "7B": 2 * (1024**4),  # 2T tokens
         "70B": 2 * (1024**4),  # 2T tokens
     },
@@ -338,7 +339,7 @@ def get_trainer_kwargs(
             ),
             learner_kwargs=dict(peak_lr=3e-4, weight_decay=0.1),
             max_sequence_length=max_sequence_length,
-            train_batch_size=16,
+            train_batch_size=8,
             max_step=max_step,
             save_every_n_steps=300,
             mesh_shape=mesh_shape_from_axes(data=-1, fsdp=8),
@@ -351,7 +352,8 @@ def get_trainer_kwargs(
                                 # TP within the chip, FSDP across chips.
                                 # Each TRN2 chip has 4 XLA cores.
                                 # mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
-                                mesh_shape=mesh_shape_from_axes(fsdp=1, model=4, data=1)
+                                # mesh_shape=mesh_shape_from_axes(fsdp=1, model=4, data=1)
+                                mesh_shape=mesh_shape_from_axes(fsdp=1, model=8, data=1)
                             ),
                             *trn2_config.module_modifications,
                             *trn2_config.partition_spec_modifications,
@@ -589,7 +591,7 @@ def get_trainer_kwargs(
     elif model_size == "70B":
         trainer_kwargs = dict(
             model_kwargs=dict(
-                num_layers=80,
+                num_layers=4,
                 hidden_dim=128 * 64,
                 num_heads=64,
                 # No GQA support in V1 models, so num_kv_heads is the same as num_heads.
@@ -602,8 +604,9 @@ def get_trainer_kwargs(
             ),
             learner_kwargs=dict(peak_lr=1.5e-4, weight_decay=0.1),
             max_sequence_length=max_sequence_length,
-            train_batch_size=train_batch_size,
+            train_batch_size=16,  # to set inference batch_size, adjust cfg.global_batch_size in dataflow_inference_custom.py
             max_step=max_step,
+            save_every_n_steps=400,
             mesh_shape=mesh_shape_from_axes(fsdp=-1),
             mesh_rules=(
                 # TPU V5e maximum per device batch is 1.
@@ -682,7 +685,8 @@ def get_trainer_kwargs(
                             MeshShapeModifier.default_config().set(
                                 # TP within the chip, FSDP across chips.
                                 # Each TRN2 chip has 4 XLA cores.
-                                mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
+                                # mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
+                                mesh_shape=mesh_shape_from_axes(fsdp=1, model=8)
                             ),
                             RematSpecModifier.default_config().set(
                                 remat_policies={
