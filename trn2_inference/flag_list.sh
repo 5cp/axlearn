@@ -9,7 +9,7 @@ export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} --model-type transformer"
 export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} --no-internal-hlo-remat"
 export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} --enable-mixed-precision-accumulation"
 export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} -O1"
-export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} --tensorizer-options='--enable-hoist-fsdp-collectives'"
+export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} --tensorizer-options='--enable-hoist-fsdp-collectives --enable-ccop-compute-overlap --cc-pipeline-tiling-factor=32'"
 export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} --internal-hlo2tensorizer-options='--remat-rope --partitioner-max-disj-runs=4'"
 export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} --internal-enable-dge-levels spill_reload --internal-backend-options=' --spill-reload-dmas-use-swdge '"
 export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} --auto-cast=none"
@@ -53,9 +53,8 @@ fi
 
 # Neuron PJRT flags
 export NEURON_WHILE_LOOP_UNROLL=1
-export NEURON_RUN_TRIVIAL_COMPUTATION_ON_CPU=1
 # export NEURON_FSDP=1  # commented-out as we don't want FSDP for inference
-export NEURON_FSDP_NUM_LAYER_COALESCE=1
-export NEURON_FSDP_NUM_LAYER_EARLY_AG_SHIFT=1
-export NEURON_FSDP_NUM_LAYER_LATE_RS_SHIFT=2
+# export NEURON_FSDP_NUM_LAYER_COALESCE=1
+# export NEURON_FSDP_NUM_LAYER_EARLY_AG_SHIFT=1
+# export NEURON_FSDP_NUM_LAYER_LATE_RS_SHIFT=2
 export NEURON_ENABLE_INT_MATMUL_DOWNCAST=1

@@ -20,8 +20,8 @@ export CCOM_SOCKET_IFNAME=eth0
 # Neuron env vars for distributed training
 nodes=`/neuron/scripts/nodelist_helper.py`
 # devices_per_node=$((128/$NEURON_RT_VIRTUAL_CORE_SIZE))
-devices_per_node=4
-export NEURON_RT_NUM_CORES=4
+devices_per_node=64
+export NEURON_RT_NUM_CORES=64
 #export COORDINATOR_ADDRESS=$(echo "$nodes" | head -n 1):64272
 export NEURON_RT_ROOT_COMM_ID=localhost:33333
 export NEURON_PJRT_PROCESSES_NUM_DEVICES=$(printf '%s,' $(seq 1 $OMPI_COMM_WORLD_SIZE | xargs -I {} echo $devices_per_node) | sed 's/,$//')
@@ -51,6 +51,11 @@ set
 
 python3 -m axlearn.cloud.gcp.examples.dataflow_inference_custom \
         --module=text.gpt.c4_trainer \
-        --config=fuji-3B-v3-flash \
-        --trainer_dir="/shared/axlearn_artifacts/SuMAHGmvpNkHffDDanUtHBOve/axlearn_out/checkpoints/step_00000300" \
+        --config=fuji-70B-v2-flash \
+        --trainer_dir="/path/to/70B/chkpt/step_00000100" \
         --mesh_selector="neuron-trn2.48xlarge-64" 2>&1 | tee ${OUTPUT_DIR}/${PMIX_HOSTNAME}.log
+
+# Dummy checkpoints created using short TP4+FSDP training jobs:
+#  70B-v2-flash 4L ckpt: /shared/axlearn_artifacts/lZddxhytMVopMZMMDBpRntqFe/axlearn_out/checkpoints/step_00000400
+#  70B-v1-flash 4L ckpt: /shared/axlearn_artifacts/dsEahySmboHQZAEfgEZnxYApN/axlearn_out/checkpoints/step_00000400
+#  3B ckpt: /shared/axlearn_artifacts/SuMAHGmvpNkHffDDanUtHBOve/axlearn_out/checkpoints/step_00000300

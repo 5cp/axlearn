@@ -201,6 +201,7 @@ class InferenceRunner(Module):
         super().__init__(cfg, parent=parent)
 
         cfg = self.config
+        cfg.inference_dtype = jax.numpy.bfloat16
         if cfg.inference_dtype is not None:
             utils.validate_float_dtype(cfg.inference_dtype)
 

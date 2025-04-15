@@ -175,9 +175,9 @@ def get_examples() -> Sequence[NestedTensor]:
     """
     cfg = input_fake.FakeLmInput.default_config()
     cfg.is_training = False
-    cfg.global_batch_size = 4
+    cfg.global_batch_size = 64
     cfg.total_num_batches = 128
-    cfg.source_length = 2048
+    cfg.source_length = 4096
 
     fake_input = input_fake.FakeLmInput(cfg)
     example_list = []

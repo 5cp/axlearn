@@ -62,6 +62,7 @@ from axlearn.experiments.text.gpt.common import (
 from axlearn.experiments.text.gpt.common import model_config as common_model_config
 from axlearn.experiments.text.gpt.common import scaled_hidden_dim
 from axlearn.experiments.trainer_config_utils import TrainerConfigFn, V6eFlashConfigModifier
+import jax.numpy as jnp
 
 MODEL_SIZES = ("test", "1B", "3B", "7B", "8B", "70B")
 
@@ -107,6 +108,7 @@ TOTAL_TOKENS = {
     },
     Version.V2: {
         "test": 2 * (1024**4),  # 2T tokens
+        "3B": 2 * (1024**4),  # 2T tokens
         "7B": 2 * (1024**4),  # 2T tokens
         "70B": 2 * (1024**4),  # 2T tokens
     },
@@ -338,7 +340,7 @@ def get_trainer_kwargs(
             ),
             learner_kwargs=dict(peak_lr=3e-4, weight_decay=0.1),
             max_sequence_length=max_sequence_length,
-            train_batch_size=16,
+            train_batch_size=8,
             max_step=max_step,
             save_every_n_steps=300,
             mesh_shape=mesh_shape_from_axes(data=-1, fsdp=8),
@@ -351,7 +353,8 @@ def get_trainer_kwargs(
                                 # TP within the chip, FSDP across chips.
                                 # Each TRN2 chip has 4 XLA cores.
                                 # mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
-                                mesh_shape=mesh_shape_from_axes(fsdp=1, model=4, data=1)
+                                # mesh_shape=mesh_shape_from_axes(fsdp=1, model=4, data=1)
+                                mesh_shape=mesh_shape_from_axes(fsdp=1, model=8, data=1)
                             ),
                             *trn2_config.module_modifications,
                             *trn2_config.partition_spec_modifications,
@@ -602,8 +605,9 @@ def get_trainer_kwargs(
             ),
             learner_kwargs=dict(peak_lr=1.5e-4, weight_decay=0.1),
             max_sequence_length=max_sequence_length,
-            train_batch_size=train_batch_size,
+            train_batch_size=16,  # to set inference batch_size, adjust cfg.global_batch_size in dataflow_inference_custom.py
             max_step=max_step,
+            save_every_n_steps=400,
             mesh_shape=mesh_shape_from_axes(fsdp=-1),
             mesh_rules=(
                 # TPU V5e maximum per device batch is 1.
@@ -682,7 +686,8 @@ def get_trainer_kwargs(
                             MeshShapeModifier.default_config().set(
                                 # TP within the chip, FSDP across chips.
                                 # Each TRN2 chip has 4 XLA cores.
-                                mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
+                                # mesh_shape=mesh_shape_from_axes(fsdp=-1, model=4)
+                                mesh_shape=mesh_shape_from_axes(fsdp=1, model=8, data=8)
                             ),
                             RematSpecModifier.default_config().set(
                                 remat_policies={
@@ -719,6 +724,7 @@ def get_trainer_kwargs(
         model_kwargs["pad_token_id"] = 128004
         model_kwargs["eos_token_id"] = 128001
     trainer_kwargs["model_cfg"] = model_config(**model_kwargs)
+    trainer_kwargs["model_cfg"].dtype = jnp.bfloat16
     trainer_kwargs["learner_cfg"] = adamw_decoupled_learner_config(
         max_step=trainer_kwargs["max_step"],
         **trainer_kwargs.pop("learner_kwargs"),
